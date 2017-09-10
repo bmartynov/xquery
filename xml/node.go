@@ -29,6 +29,18 @@ const (
 	CommentNode
 )
 
+type DecoderOption func(d *xml.Decoder)
+func AutoClose(auto_close []string) func(*xml.Decoder) {
+	return func(d *xml.Decoder) {
+		d.AutoClose = auto_close
+	}
+}
+func Strict(strict bool) func(*xml.Decoder) {
+	return func(d *xml.Decoder) {
+		d.Strict = strict
+	}
+}
+
 // A Node consists of a NodeType and some Data (tag name for
 // element nodes, content for text) and are part of a tree of Nodes.
 type Node struct {
@@ -146,7 +158,7 @@ func LoadURL(url string) (*Node, error) {
 	return parse(resp.Body)
 }
 
-func parse(r io.Reader) (*Node, error) {
+func parse(r io.Reader, dec_opts ...DecoderOption) (*Node, error) {
 	var (
 		decoder      = xml.NewDecoder(r)
 		doc          = &Node{Type: DocumentNode}
@@ -154,6 +166,11 @@ func parse(r io.Reader) (*Node, error) {
 		level        = 0
 	)
 	decoder.CharsetReader = charset.NewReaderLabel
+
+	for _, do := range dec_opts {
+		do(decoder)
+	}
+
 	prev := doc
 	for {
 		tok, err := decoder.Token()
@@ -242,6 +259,6 @@ quit:
 }
 
 // Parse returns the parse tree for the XML from the given Reader.
-func Parse(r io.Reader) (*Node, error) {
-	return parse(r)
+func Parse(r io.Reader, dec_opts ...DecoderOption) (*Node, error) {
+	return parse(r, dec_opts...)
 }
